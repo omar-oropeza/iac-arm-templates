@@ -1,0 +1,12 @@
+#az role assignment create --assignee-object-id $appServiceSystemIdentityId --assignee-principal-type "ServicePrincipal" --role "Contributor" --resource-group demo-iac
+                    
+az group create --location centralus --name demo-iac
+
+az deployment group what-if --resource-group demo-iac --template-file './templates/storage-accounts.template.json' --parameters @templates/qa/storage-accounts.template.parameters.json --subscription 339ad297-755e-4f1e-9c41-9f445ddb85b2
+
+# run template PSRule validation 
+Get-AzRuleTemplateLink | Export-AzRuleTemplateData -OutputPath 'out/templates/'
+Assert-PSRule -InputPath 'out/templates/'
+
+# run arm-ttk validation
+Test-AzTemplate -TemplatePath ./templates/storage-accounts.template.json

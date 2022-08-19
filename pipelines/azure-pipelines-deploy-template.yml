@@ -1,0 +1,49 @@
+parameters:
+  - name: resourceGroupName
+  - name: serviceConnection
+  - name: stage
+  - name: jobName
+  - name: environment
+  - name: artifactName
+  - name: pipelineId
+    default: ''
+  - name: whatif
+    type: boolean
+    default: true
+  - name: folderEnvironment
+    type: string
+    default: ''
+
+jobs:
+  - deployment: ${{parameters.jobName}}
+    ${{ if eq(parameters.whatif, true) }}:
+      displayName: 'What-If ${{parameters.stage}} Infrastructure'
+    ${{ if eq(parameters.whatif, false) }}:
+      displayName: 'Creating ${{parameters.stage}} Infrastructure'
+    environment: ${{parameters.environment}}
+    variables:
+      ${{ if ne(parameters.pipelineId, '') }}:
+        downloadPath: '$(Pipeline.Workspace)/${{ parameters.pipelineId }}/${{parameters.artifactName}}/'
+      ${{ if eq(parameters.pipelineId, '') }}:
+        downloadPath: '$(Pipeline.Workspace)/${{parameters.artifactName}}/'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - ${{ if ne(parameters.pipelineId, '') }}:
+                - download: ${{ parameters.pipelineId }}
+                  displayName: Download ${{ parameters.pipelineId }}
+            - ${{ if eq(parameters.pipelineId, '') }}:
+                - download: current
+                  displayName: Download
+
+            - script: echo "Running ${{ parameters.pipelineId }} in $(downloadPath)"
+
+            - template: az-cli-template.yml
+              parameters:
+                displayName: 'Creating Storage Account'
+                serviceConnection: ${{parameters.serviceConnection}}
+                resourceGroupName: ${{parameters.resourceGroupName}}
+                armTemplateFileName: 'container-registry'
+                folderEnvironment: ${{parameters.folderEnvironment}}
+                whatif: ${{parameters.whatif}}

@@ -1,0 +1,104 @@
+parameters:
+  - name: deployLabEnvironment
+    type: boolean
+    default: false
+
+trigger:
+  branches:
+    include:
+      - master
+
+pr:
+  branches:
+    include:
+      - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  product: 'demo'
+
+stages:
+  - stage: 'build'
+    displayName: 'Build'
+    jobs:
+
+      - template: dns/build.yml
+
+      - job: armttk
+        displayName: 'ARM TTK Validations'
+        continueOnError: true
+        pool:
+          vmImage: 'windows-latest'
+        steps:
+          - task: RunARMTTKTests@1
+            continueOnError: true
+            inputs:
+              templatelocation: '$(System.DefaultWorkingDirectory)\templates'
+              resultLocation: '$(System.DefaultWorkingDirectory)\results'
+              allTemplatesMain: false
+              cliOutputResults: true
+
+          - task: PublishTestResults@2
+            inputs:
+              testResultsFormat: 'NUnit'
+              testResultsFiles: '$(System.DefaultWorkingDirectory)\results\*-armttk.xml'
+
+      - job: psrule
+        displayName: 'PSRule Validations'
+        continueOnError: true
+        steps:
+          - task: ps-rule-install@2
+            inputs:
+              module: 'PSRule.Rules.Azure'
+              latest: false
+              prerelease: false
+
+          - powershell: Get-AzRuleTemplateLink | Export-AzRuleTemplateData -OutputPath out/templates/;
+            displayName: 'Export template data'
+
+          - task: ps-rule-assert@2
+            continueOnError: true
+            inputs:
+              inputType: inputPath
+              inputPath: 'out/templates/*.json'
+              modules: 'PSRule.Rules.Azure'
+              outputFormat: NUnit3
+              outputPath: reports/rule-results.xml
+              # source: '.ps-rule/'                      # Additionally, analyze object using custom rules from '.ps-rule/'.
+
+          - task: PublishTestResults@2
+            displayName: 'Publish PSRule results'
+            condition: succeededOrFailed()
+            inputs:
+              testRunTitle: 'PSRule'
+              testRunner: NUnit
+              testResultsFiles: 'reports/rule-report.xml'
+              mergeTestResults: true
+              publishRunAttachments: true
+
+      - job: pushtemplates
+        displayName: Publishing Templates
+        steps:
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/templates'
+              artifact: '${{variables.product}}'
+              publishLocation: 'pipeline'
+
+
+  - stage: whatifqa
+    displayName: 'Running what-if QA'
+    dependsOn: 'build'
+    jobs:
+      - template: pipelines/azure-pipelines-deploy-template.yml # qa
+        parameters:
+          environment: '${{variables.product}}-whatif'
+          resourceGroupName: '${{variables.product}}-iac'
+          serviceConnection: 'inf-lower-automation-339ad297-755e-4f1e-9c41-9f445ddb85b2-Accelerator'
+          stage: 'qa'
+          jobName: 'qawhatif'
+          artifactName: '${{variables.product}}'
+          whatif: true
+          folderEnvironment: 'qa'

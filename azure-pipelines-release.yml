@@ -1,0 +1,33 @@
+trigger: none
+
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+resources:
+  pipelines:
+    - pipeline: buildpipeline
+      source: iac-build
+      trigger:
+        branches:
+          - master
+
+variables:
+  product: 'demo'
+
+stages:
+  - stage: qa
+    displayName: 'qa'
+    jobs:
+      - template: pipelines/azure-pipelines-deploy-template.yml
+        parameters:
+          environment: '${{variables.product}}-qa'
+          resourceGroupName: '${{variables.product}}-iac'
+          serviceConnection: 'inf-lower-automation-339ad297-755e-4f1e-9c41-9f445ddb85b2-Accelerator'
+          stage: 'qa'
+          jobName: 'qadeploy'
+          artifactName: '${{variables.product}}'
+          pipelineId: 'buildpipeline'
+          whatif: false
+          folderEnvironment: 'qa'

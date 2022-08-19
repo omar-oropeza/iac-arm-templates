@@ -1,0 +1,37 @@
+parameters:
+  - name: displayName
+  - name: serviceConnection
+  - name: resourceGroupName
+  - name: armTemplateFileName
+  - name: whatif
+    type: boolean
+    default: true
+  - name: folderEnvironment
+    type: string
+    default: ''
+
+steps:
+  - task: AzureCLI@2
+    displayName: ${{parameters.displayName}}
+    enabled: true
+    continueOnError: true
+    inputs:
+      azureSubscription: ${{parameters.serviceConnection}}
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      addSpnToEnvironment: true
+      inlineScript: |
+        $whatif = $${{parameters.whatif}}
+        $templateFile ="$(downloadPath)${{parameters.armTemplateFileName}}.template.json"
+        $parametersFile = "$(downloadPath)${{parameters.folderEnvironment}}/${{parameters.armTemplateFileName}}.template.parameters.json"      
+        $deploymentName = "$(date ''+%Y_%m_%d_%H_%M_%S'')_${{replace(parameters.armTemplateFileName, '-', '_')}}"
+
+        if ($whatif) {
+          Write-Host "Validating $templateFile arm file with parameter file: $parametersFile"
+          if ($templateFile -notlike '*cac.template*') { # skip cac what-if: bug https://github.com/Azure/azure-cli/issues/19850
+             az deployment group what-if -n $deploymentName -g ${{parameters.resourceGroupName}} --template-file "$templateFile" --parameters @$parametersFile 
+          }
+        } else {
+          Write-Host "Deploying $templateFile arm file with parameter file: $parametersFile"
+          az deployment group create -n $deploymentName -g ${{parameters.resourceGroupName}} --template-file "$templateFile" --parameters @$parametersFile
+        }
