@@ -24,8 +24,6 @@ stages:
     displayName: 'Build'
     jobs:
 
-      - template: dns/build.yml
-
       - job: armttk
         displayName: 'ARM TTK Validations'
         continueOnError: true
