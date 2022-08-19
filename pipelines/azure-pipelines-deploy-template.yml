@@ -44,6 +44,6 @@ jobs:
                 displayName: 'Creating Storage Account'
                 serviceConnection: ${{parameters.serviceConnection}}
                 resourceGroupName: ${{parameters.resourceGroupName}}
-                armTemplateFileName: 'container-registry'
+                armTemplateFileName: 'storage-accounts'
                 folderEnvironment: ${{parameters.folderEnvironment}}
                 whatif: ${{parameters.whatif}}
