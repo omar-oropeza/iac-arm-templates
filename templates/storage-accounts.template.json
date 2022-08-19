@@ -34,14 +34,10 @@
                 "tier": "Standard"
             },
             "properties": {
-                "allowBlobPublicAccess": true
+                "allowBlobPublicAccess": false
             }
         }
     ],
     "outputs": {
-        "storageAccountKey": {
-            "type": "string",
-            "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2021-04-01').keys[0].value]"
-        }
     }
 }
