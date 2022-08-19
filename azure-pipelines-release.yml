@@ -8,7 +8,7 @@ pool:
 resources:
   pipelines:
     - pipeline: buildpipeline
-      source: iac-build
+      source: iac-arm-template-build
       trigger:
         branches:
           - master
